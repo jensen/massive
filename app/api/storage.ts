@@ -2,7 +2,7 @@ function get<T, P = undefined>(url: string) {
   return (data?: P) =>
     fetch(
       `/api${url}${data ? "?" + new URLSearchParams(data).toString() : ""}`
-    ).then((response) => response.json()) as T;
+    ).then((response) => response.json()) as Promise<T>;
 }
 
 function post<T, P = undefined>(url: string) {
@@ -13,7 +13,7 @@ function post<T, P = undefined>(url: string) {
         "Content-Type": "application/json",
       }),
       body: data && JSON.stringify(data),
-    }).then((response) => response.json()) as T;
+    }).then((response) => response.json()) as Promise<T>;
 }
 
 export const createMultipartUpload = post<
