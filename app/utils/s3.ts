@@ -37,13 +37,7 @@ const uploadPart = (
   number: number,
   url: string,
   data: Blob,
-  handleProgress: ({
-    number,
-    loaded,
-  }: {
-    number: number;
-    loaded: number;
-  }) => void
+  handleProgress: ({ number, loaded }: ChunkProgress) => void
 ): Promise<string> => {
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
@@ -90,18 +84,10 @@ const prepareResumeFile = async ({
     uploadId,
   });
 
-  if (parts) {
-    return {
-      uploadId,
-      key,
-      parts,
-    };
-  }
-
   return {
     uploadId,
     key,
-    parts: [],
+    parts: parts || [],
   };
 };
 
@@ -109,13 +95,7 @@ export const uploadChunks = async (
   key: string,
   uploadId: string,
   chunks: FileChunk[],
-  handleProgress: ({
-    number,
-    loaded,
-  }: {
-    number: number;
-    loaded: number;
-  }) => void
+  handleProgress: ({ number, loaded }: ChunkProgress) => void
 ) => {
   const { presignedUrls } = await storage.prepareUploadParts({
     key,

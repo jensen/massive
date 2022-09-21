@@ -14,6 +14,7 @@ import {
   completeUpload,
   getExistingUploads,
 } from "~/utils/s3";
+import { generateFilename, readableFileSize } from "~/utils/file";
 
 import type { PropsWithChildren } from "react";
 
@@ -22,11 +23,14 @@ const CONCURRENT_CHUNKS_PER_FILE = 5;
 type ReducerAction =
   | { type: "START_CHUNKS"; uploading: FileChunk[] }
   | { type: "UPDATE_CHUNK"; number: number; loaded: number }
-  | { type: "END_CHUNKS" };
+  | { type: "END_CHUNKS" }
+  | { type: "SET_BYTES_UPLOADED"; bytesUploaded: number };
 
 interface ReducerState {
   uploading: ChunkProgress[];
   bytesUploaded: number;
+  ts: number;
+  speed: number;
 }
 
 const reducer = (state: ReducerState, action: ReducerAction): ReducerState => {
@@ -51,21 +55,36 @@ const reducer = (state: ReducerState, action: ReducerAction): ReducerState => {
       ...state,
       uploading: [
         ...state.uploading,
-        ...action.uploading.map((upload) => ({
-          number: upload.number,
+        ...action.uploading.map((chunk) => ({
+          number: chunk.number,
           loaded: 0,
         })),
       ],
+      ts: Date.now(),
     };
   }
 
   if (action.type === "END_CHUNKS") {
+    const bytesComplete = state.uploading.reduce(
+      (sum, upload) => sum + upload.loaded,
+      0
+    );
+
+    const speed = bytesComplete / ((Date.now() - state.ts) / 1000);
+
     return {
       ...state,
-      bytesUploaded:
-        state.bytesUploaded +
-        state.uploading.reduce((sum, upload) => sum + upload.loaded, 0),
+      bytesUploaded: state.bytesUploaded + bytesComplete,
       uploading: [],
+      speed: (state.speed + speed) / 2,
+      ts: 0,
+    };
+  }
+
+  if (action.type === "SET_BYTES_UPLOADED") {
+    return {
+      ...state,
+      bytesUploaded: action.bytesUploaded,
     };
   }
 
@@ -77,12 +96,14 @@ const UploaderContext = createContext<{
   start: () => Promise<void>;
   complete: (key: string, uploadId: string, parts: any) => void;
   uploads: Upload[];
+  existing: MultipartUpload[];
 }>({
   add: (files: File[]) => Promise.resolve(undefined),
   start: () => Promise.resolve(undefined),
   complete: (key: string, uploadId: string, parts: any) =>
     Promise.resolve(undefined),
   uploads: [],
+  existing: [],
 });
 
 interface UploaderProviderProps {}
@@ -91,15 +112,14 @@ export default function UploaderProvider(
   props: PropsWithChildren<UploaderProviderProps>
 ) {
   const [uploads, setUploads] = useState<Upload[]>([]);
+  const [existing, setExisting] = useState<MultipartUpload[]>([]);
 
   const complete = useCallback(
     async (key: string, uploadId: string, parts: MultipartUploadPart[]) => {
       await completeUpload(key, uploadId, parts);
 
       setUploads((prev) => {
-        const finishedIndex = prev.findIndex(
-          (upload) => upload.uploadId === uploadId
-        );
+        const finishedIndex = prev.findIndex((upload) => upload.key === key);
 
         return prev.map((upload, index) => {
           if (finishedIndex === index) {
@@ -125,11 +145,15 @@ export default function UploaderProvider(
   );
 
   const start = async () => {
-    setUploads((prev) =>
-      prev.map((upload, index) =>
-        index === 0 ? { ...upload, uploading: true } : upload
-      )
-    );
+    setUploads((prev) => {
+      const next = prev.findIndex(
+        (upload) => upload.uploading === false && upload.complete === false
+      );
+
+      return prev.map((upload, index) =>
+        index === next ? { ...upload, uploading: true } : upload
+      );
+    });
   };
 
   const add = async (files: File[]) => {
@@ -137,18 +161,17 @@ export default function UploaderProvider(
 
     const uploads: Upload[] = await Promise.all(
       files.map((file) =>
-        checkResume(file, existing).then(({ key, uploadId, parts }) => ({
+        generateFilename(file).then((key) => ({
           key,
-          uploadId,
           complete: false,
           uploading: false,
-          parts,
           file,
         }))
       )
     );
 
-    setUploads(uploads);
+    setExisting(existing);
+    setUploads((prev) => [...prev, ...uploads]);
   };
 
   return (
@@ -158,6 +181,7 @@ export default function UploaderProvider(
         start,
         complete,
         uploads,
+        existing,
       }}
     >
       {props.children}
@@ -170,11 +194,16 @@ export const useUploader = () => {
 };
 
 export const useFileUpload = (upload: Upload) => {
-  const { complete } = useContext(UploaderContext);
+  const { complete, existing } = useContext(UploaderContext);
+
+  const [uploadId, setUploadId] = useState<string | null>(null);
+  const [parts, setParts] = useState<MultipartUploadPart[]>([]);
 
   const [progress, dispatch] = useReducer(reducer, {
     uploading: [],
-    bytesUploaded: upload.parts.reduce((sum, part) => sum + part.Size, 0),
+    bytesUploaded: 0,
+    ts: 0,
+    speed: 0,
   });
 
   const chunks = useRef<FileChunk[]>([]);
@@ -183,10 +212,24 @@ export const useFileUpload = (upload: Upload) => {
     dispatch({ type: "UPDATE_CHUNK", number, loaded });
   }, []);
 
-  const { key, uploadId, uploading, file, parts } = upload;
+  const { key, uploading, file } = upload;
 
   useEffect(() => {
-    if (uploading) {
+    if (uploadId === null) {
+      checkResume(file, existing).then(({ uploadId, parts }) => {
+        setUploadId(uploadId);
+        setParts(parts);
+
+        dispatch({
+          type: "SET_BYTES_UPLOADED",
+          bytesUploaded: parts.reduce((sum, part) => sum + part.Size, 0),
+        });
+      });
+    }
+  }, [existing, uploadId, file]);
+
+  useEffect(() => {
+    if (uploadId && uploading) {
       if (chunks.current.length === 0) {
         chunks.current = splitChunks(file, parts);
       }
@@ -261,5 +304,11 @@ export const useFileUpload = (upload: Upload) => {
         upload.file.size) *
       100
     ).toFixed(0),
+    ready: uploadId !== null,
+    speed: {
+      calculating: progress.speed === 0 && uploading,
+      raw: progress.speed,
+      readable: `${readableFileSize(progress.speed)}/sec`,
+    },
   };
 };

@@ -49,7 +49,7 @@ export const action = async () => {
 
 export default function Uploads() {
   const { uploads } = useLoaderData<{
-    uploads: { UploadId: string; Parts: any[] }[];
+    uploads: { Key: string; UploadId: string; Parts: any[] }[];
   }>();
 
   return (
@@ -57,7 +57,7 @@ export default function Uploads() {
       <ul>
         {uploads.map((upload) => (
           <li key={upload.UploadId}>
-            {upload.UploadId} - {upload.Parts?.length}
+            {upload.Key} - {upload.Parts?.length}
           </li>
         ))}
       </ul>

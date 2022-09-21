@@ -1,3 +1,17 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-100;
+  }
+}
+
+@layer components {
+  .button {
+    @apply flex space-x-4 w-full px-4 py-2;
+    @apply border border-gray-300 border-dashed rounded-md;
+    @apply text-gray-400 hover:text-gray-500 hover:cursor-pointer;
+  }
+}

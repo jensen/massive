@@ -18,11 +18,9 @@ interface FileChunk {
 
 interface Upload {
   key: string;
-  uploadId: string;
   complete: boolean;
   uploading: boolean;
   file: File;
-  parts: MultipartUploadPart[];
 }
 
 interface ChunkProgress {
