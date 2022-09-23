@@ -1,43 +1,36 @@
-import { connect } from "@planetscale/database";
+import { PrismaClient } from "@prisma/client";
 
-const config = {
-  host: process.env.DATABASE_HOST,
-  username: process.env.DATABASE_USERNAME,
-  password: process.env.DATABASE_PASSWORD,
-};
+let prisma: PrismaClient;
+
+declare global {
+  var __db__: PrismaClient;
+}
+
+if (process.env.NODE_ENV === "production") {
+  prisma = new PrismaClient();
+} else {
+  if (!global.__db__) {
+    global.__db__ = new PrismaClient();
+  }
+  prisma = global.__db__;
+  prisma.$connect();
+}
 
 export default function createClient() {
-  return connect(config);
+  return prisma;
 }
 
 export const selectObjects = () => {
-  return createClient()
-    .execute(`select * from objects`)
-    .then(({ rows }) =>
-      rows.map((row) => {
-        row.size = Number(row.size);
-        return row;
-      })
-    );
+  return createClient().file.findMany();
 };
 
-export const createObject = ({
-  id,
-  name,
-  size,
-  type,
-}: {
+export const createObject = (data: {
   id: string;
   name: string;
   size: number;
   type: string;
 }) => {
-  return createClient()
-    .execute(`insert into objects (id, name, size, type) values (?, ?, ?, ?)`, [
-      id,
-      name,
-      size,
-      type,
-    ])
-    .then(({ rows }) => rows);
+  return createClient().file.create({
+    data,
+  });
 };
