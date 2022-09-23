@@ -35,7 +35,10 @@ export const encodeHash = async (file: File) => {
   const hash = await crypto.subtle.digest("sha-1", data);
 
   return Array.from(new Uint8Array(hash))
-    .map((b) => b.toString(16))
+    .map((b) => {
+      const hex = b.toString(16);
+      return hex.length === 1 ? `0${hex}` : hex;
+    })
     .join("");
 };
 

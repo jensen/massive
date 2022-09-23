@@ -39,3 +39,13 @@ export const listParts = get<
   { parts: MultipartUploadPart[] },
   { key: string; uploadId: string }
 >("/storage/listParts");
+
+export const addObject = post<
+  {
+    id: string;
+    name: string;
+    type: string;
+    size: number;
+  },
+  any
+>("/storage/objects");

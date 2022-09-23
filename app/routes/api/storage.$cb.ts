@@ -45,13 +45,12 @@ export const action = async ({ request, params }: ActionArgs) => {
 
   if (params.cb === "prepareUploadParts") {
     const urls = await prepareUploadParts(body.key, body.uploadId, body.parts);
-    console.log(urls);
+
     const presignedUrls = urls.reduce((urls, url, index) => {
       urls[body.parts[index]] = url;
       return urls;
     }, {} as { [key: string]: string });
 
-    console.log(presignedUrls);
     return json({
       presignedUrls,
     });

@@ -93,7 +93,7 @@ export const prepareUploadParts = (
           UploadId: uploadId,
           PartNumber: number,
         }),
-        { expiresIn: 300 }
+        { expiresIn: 3600 }
       )
     )
   );

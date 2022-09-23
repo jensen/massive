@@ -15,6 +15,7 @@ import {
   getExistingUploads,
 } from "~/utils/s3";
 import { generateFilename, readableFileSize } from "~/utils/file";
+import { addObject } from "~/api/storage";
 
 import type { PropsWithChildren } from "react";
 
@@ -116,7 +117,25 @@ export default function UploaderProvider(
 
   const complete = useCallback(
     async (key: string, uploadId: string, parts: MultipartUploadPart[]) => {
+      const upload = uploads.find(
+        (upload) => upload.key === key && upload.uploading
+      );
+
+      if (upload === undefined) {
+        throw new Error("Could not find upload");
+      }
+
       await completeUpload(key, uploadId, parts);
+
+      const id = upload.key.split(".")[0];
+      const { name, type, size } = upload.file;
+
+      await addObject({
+        id,
+        name,
+        type,
+        size,
+      });
 
       setUploads((prev) => {
         const finishedIndex = prev.findIndex((upload) => upload.key === key);
@@ -141,7 +160,7 @@ export default function UploaderProvider(
         });
       });
     },
-    []
+    [uploads]
   );
 
   const start = async () => {
