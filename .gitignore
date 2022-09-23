@@ -1,12 +1,14 @@
 node_modules
 
+.DS_Store
 .cache
 .env
-.vercel
 .output
 
 /build/
 /public/build
-/api
 
 /app/styles
+
+/prisma/*.db
+/prisma/*.db-journal
