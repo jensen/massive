@@ -10,5 +10,4 @@ node_modules
 
 /app/styles
 
-/prisma/*.db
-/prisma/*.db-journal
+/prisma/*.db*

@@ -29,7 +29,13 @@ const Upload = (props: UploadListProps) => {
           </span>
         ) : (
           <span className="text-md text-gray-600">
-            {speed.raw > 0 && speed.readable}&nbsp;
+            {props.upload.error
+              ? "Incomplete"
+              : props.upload.complete
+              ? "Complete"
+              : speed.raw > 0
+              ? speed.readable
+              : ""}
           </span>
         )}
         <span>{ready && `${percentage}%`}&nbsp;</span>

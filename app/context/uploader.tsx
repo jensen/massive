@@ -96,6 +96,7 @@ const UploaderContext = createContext<{
   add: (files: File[]) => Promise<void>;
   start: () => Promise<void>;
   complete: (key: string, uploadId: string, parts: any) => void;
+  incomplete: (key: string) => void;
   uploads: Upload[];
   existing: MultipartUpload[];
 }>({
@@ -103,6 +104,7 @@ const UploaderContext = createContext<{
   start: () => Promise.resolve(undefined),
   complete: (key: string, uploadId: string, parts: any) =>
     Promise.resolve(undefined),
+  incomplete: (key: string) => Promise.resolve(undefined),
   uploads: [],
   existing: [],
 });
@@ -163,6 +165,33 @@ export default function UploaderProvider(
     [uploads]
   );
 
+  const incomplete = useCallback(
+    async (key: string) => {
+      const upload = uploads.find(
+        (upload) => upload.key === key && upload.uploading
+      );
+
+      if (upload === undefined) {
+        throw new Error("Could not find upload");
+      }
+
+      setUploads((prev) => {
+        return prev.map((upload, index) => {
+          if (upload.key === key) {
+            return {
+              ...upload,
+              uploading: false,
+              error: true,
+            };
+          }
+
+          return upload;
+        });
+      });
+    },
+    [uploads]
+  );
+
   const start = async () => {
     setUploads((prev) => {
       const next = prev.findIndex(
@@ -184,6 +213,7 @@ export default function UploaderProvider(
           key,
           complete: false,
           uploading: false,
+          error: false,
           file,
         }))
       )
@@ -199,6 +229,7 @@ export default function UploaderProvider(
         add,
         start,
         complete,
+        incomplete,
         uploads,
         existing,
       }}
@@ -213,7 +244,7 @@ export const useUploader = () => {
 };
 
 export const useFileUpload = (upload: Upload) => {
-  const { complete, existing } = useContext(UploaderContext);
+  const { complete, incomplete, existing } = useContext(UploaderContext);
 
   const [uploadId, setUploadId] = useState<string | null>(null);
   const [parts, setParts] = useState<MultipartUploadPart[]>([]);
@@ -256,25 +287,29 @@ export const useFileUpload = (upload: Upload) => {
       const upload = async (uploading: FileChunk[]) => {
         dispatch({ type: "START_CHUNKS", uploading });
 
-        const uploaded = await uploadChunks(
-          key,
-          uploadId,
-          uploading,
-          handleProgress
-        );
-
-        for (const upload of uploaded) {
-          const chunk = chunks.current.find(
-            (chunk) => chunk.number === upload.PartNumber
+        try {
+          const uploaded = await uploadChunks(
+            key,
+            uploadId,
+            uploading,
+            handleProgress
           );
 
-          if (chunk) {
-            chunk.ETag = upload.ETag;
-            chunk.complete = true;
-          }
-        }
+          for (const upload of uploaded) {
+            const chunk = chunks.current.find(
+              (chunk) => chunk.number === upload.PartNumber
+            );
 
-        dispatch({ type: "END_CHUNKS" });
+            if (chunk) {
+              chunk.ETag = upload.ETag;
+              chunk.complete = true;
+            }
+          }
+
+          dispatch({ type: "END_CHUNKS" });
+        } catch (error) {
+          incomplete(key);
+        }
       };
 
       const first = chunks.current.findIndex(
@@ -311,6 +346,7 @@ export const useFileUpload = (upload: Upload) => {
     parts,
     handleProgress,
     complete,
+    incomplete,
     progress.bytesUploaded,
   ]);
 

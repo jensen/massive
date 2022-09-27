@@ -44,21 +44,29 @@ const uploadPart = (
 
     request.open("put", url, true);
 
-    request.upload.addEventListener("progress", (event) => {
+    request.upload.onprogress = (event) => {
       handleProgress({ number, loaded: event.loaded });
-    });
+    };
 
-    request.addEventListener("error", (event) => {
+    request.onerror = (event) => {
       reject(new Error(`Uploading part ${number} failed`));
-    });
+    };
 
-    request.addEventListener("load", (event) => {
+    request.onload = (event) => {
       if (event.target) {
-        resolve(
-          (event.target as XMLHttpRequest).getResponseHeader("ETag") as string
-        );
+        if (request.status === 200) {
+          resolve(
+            (event.target as XMLHttpRequest).getResponseHeader("ETag") as string
+          );
+        } else {
+          reject(
+            new Error(
+              `Uploading part ${number} failed: status ${request.status}`
+            )
+          );
+        }
       }
-    });
+    };
 
     request.send(data);
   });
@@ -95,27 +103,37 @@ export const uploadChunks = async (
   key: string,
   uploadId: string,
   chunks: FileChunk[],
-  handleProgress: ({ number, loaded }: ChunkProgress) => void
-) => {
+  handleProgress: ({ number, loaded }: ChunkProgress) => void,
+  retry: number = 0
+): Promise<{ PartNumber: number; ETag: string }[]> => {
   const { presignedUrls } = await storage.prepareUploadParts({
     key,
     uploadId,
     parts: chunks.map((chunk) => chunk.number),
   });
 
-  return await Promise.all(
-    chunks.map((chunk) =>
-      uploadPart(
-        chunk.number,
-        presignedUrls[chunk.number],
-        chunk.data,
-        handleProgress
-      ).then((ETag) => ({
-        PartNumber: chunk.number,
-        ETag: ETag,
-      }))
-    )
-  );
+  try {
+    const uploaded = await Promise.all(
+      chunks.map((chunk) =>
+        uploadPart(
+          chunk.number,
+          presignedUrls[chunk.number],
+          chunk.data,
+          handleProgress
+        ).then((ETag) => ({
+          PartNumber: chunk.number,
+          ETag: ETag,
+        }))
+      )
+    );
+    return uploaded;
+  } catch (error) {
+    if (retry < 3) {
+      return uploadChunks(key, uploadId, chunks, handleProgress, retry + 1);
+    } else {
+      throw new Error("Cannot upload file");
+    }
+  }
 };
 
 export const checkResume = async (file: File, uploads?: MultipartUpload[]) => {

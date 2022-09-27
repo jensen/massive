@@ -20,6 +20,7 @@ interface Upload {
   key: string;
   complete: boolean;
   uploading: boolean;
+  error: boolean;
   file: File;
 }
 
