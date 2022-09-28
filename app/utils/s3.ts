@@ -41,7 +41,7 @@ const uploadPart = (
   url: string,
   data: Blob,
   handleProgress: ({ number, loaded }: ChunkProgress) => void
-): Promise<string> => {
+): Promise<{ PartNumber: number; ETag: string }> => {
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
 
@@ -58,9 +58,12 @@ const uploadPart = (
     request.onload = (event) => {
       if (event.target) {
         if (request.status === 200) {
-          resolve(
-            (event.target as XMLHttpRequest).getResponseHeader("ETag") as string
-          );
+          resolve({
+            PartNumber: number,
+            ETag: (event.target as XMLHttpRequest).getResponseHeader(
+              "ETag"
+            ) as string,
+          });
         } else {
           reject(
             new Error(
@@ -116,20 +119,16 @@ export const uploadChunks = async (
   });
 
   try {
-    const uploaded = await Promise.all(
+    return await Promise.all(
       chunks.map((chunk) =>
         uploadPart(
           chunk.number,
           presignedUrls[chunk.number],
           chunk.data,
           handleProgress
-        ).then((ETag) => ({
-          PartNumber: chunk.number,
-          ETag: ETag,
-        }))
+        )
       )
     );
-    return uploaded;
   } catch (error) {
     if (retry < NUMBER_OF_RETRIES) {
       return uploadChunks(key, uploadId, chunks, handleProgress, retry + 1);
