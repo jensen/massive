@@ -1,9 +1,12 @@
 import * as storage from "~/api/storage";
 import { generateFilename } from "./file";
 
+const NUMBER_OF_RETRIES = 3;
+const MINIMUM_CHUNK_SIZE = 5 * 1024 * 1024;
+
 export const splitChunks = (file: File, parts: MultipartUploadPart[]) => {
   const chunks: FileChunk[] = [];
-  const size = Math.max(5 * 1024 * 1024, Math.ceil(file.size / 10000));
+  const size = Math.max(MINIMUM_CHUNK_SIZE, Math.ceil(file.size / 10000));
 
   const existing = parts.reduce((existing, part) => {
     existing[part.PartNumber] = part;
@@ -128,7 +131,7 @@ export const uploadChunks = async (
     );
     return uploaded;
   } catch (error) {
-    if (retry < 3) {
+    if (retry < NUMBER_OF_RETRIES) {
       return uploadChunks(key, uploadId, chunks, handleProgress, retry + 1);
     } else {
       throw new Error("Cannot upload file");
