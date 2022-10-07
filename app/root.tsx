@@ -8,6 +8,7 @@ import {
   ScrollRestoration,
 } from "@remix-run/react";
 import Uploader from "~/components/Uploader";
+import { useRefetchData } from "~/api/data";
 
 import styles from "~/styles/app.css";
 
@@ -22,6 +23,8 @@ export const meta: MetaFunction = () => ({
 });
 
 export default function App() {
+  const refresh = useRefetchData();
+
   return (
     <html lang="en">
       <head>
@@ -29,7 +32,7 @@ export default function App() {
         <Links />
       </head>
       <body>
-        <Uploader />
+        <Uploader refresh={refresh} />
         <Outlet />
         <ScrollRestoration />
         <Scripts />

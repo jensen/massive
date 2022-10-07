@@ -1,4 +1,4 @@
-import {
+import React, {
   createContext,
   useContext,
   useState,
@@ -17,7 +17,7 @@ import {
 import { generateFilename, readableFileSize } from "~/utils/file";
 import { addObject } from "~/api/storage";
 
-import type { PropsWithChildren } from "react";
+import type { RefObject, PropsWithChildren } from "react";
 
 const CONCURRENT_CHUNKS_PER_FILE = 5;
 
@@ -93,14 +93,15 @@ const reducer = (state: ReducerState, action: ReducerAction): ReducerState => {
 };
 
 const UploaderContext = createContext<{
-  add: (files: File[]) => Promise<void>;
+  add: (files: File[], remove: (key: string) => Promise<void>) => Promise<void>;
   start: () => Promise<void>;
   complete: (key: string, uploadId: string, parts: any) => void;
-  incomplete: (key: string) => void;
+  incomplete: (key: string) => Promise<void>;
   uploads: Upload[];
   existing: MultipartUpload[];
 }>({
-  add: (files: File[]) => Promise.resolve(undefined),
+  add: (files: File[], remove: (key: string) => Promise<void>) =>
+    Promise.resolve(undefined),
   start: () => Promise.resolve(undefined),
   complete: (key: string, uploadId: string, parts: any) =>
     Promise.resolve(undefined),
@@ -109,13 +110,17 @@ const UploaderContext = createContext<{
   existing: [],
 });
 
-interface UploaderProviderProps {}
+interface UploaderProviderProps {
+  refresh: () => void;
+}
 
 export default function UploaderProvider(
   props: PropsWithChildren<UploaderProviderProps>
 ) {
   const [uploads, setUploads] = useState<Upload[]>([]);
   const [existing, setExisting] = useState<MultipartUpload[]>([]);
+
+  const { refresh } = props;
 
   const complete = useCallback(
     async (key: string, uploadId: string, parts: MultipartUploadPart[]) => {
@@ -161,8 +166,10 @@ export default function UploaderProvider(
           return upload;
         });
       });
+
+      refresh();
     },
-    [uploads]
+    [uploads, refresh]
   );
 
   const incomplete = useCallback(
@@ -204,7 +211,7 @@ export default function UploaderProvider(
     });
   };
 
-  const add = async (files: File[]) => {
+  const add = async (files: File[], inputFileRemove: (key: string) => void) => {
     const { uploads: existing } = await getExistingUploads();
 
     const uploads: Upload[] = await Promise.all(
@@ -215,12 +222,20 @@ export default function UploaderProvider(
           uploading: false,
           error: false,
           file,
+          remove: () => {
+            remove(key);
+            inputFileRemove(key);
+          },
         }))
       )
     );
 
     setExisting(existing);
     setUploads((prev) => [...prev, ...uploads]);
+  };
+
+  const remove = async (key: string) => {
+    setUploads((prev) => prev.filter((upload) => upload.key !== key));
   };
 
   return (
@@ -365,5 +380,22 @@ export const useFileUpload = (upload: Upload) => {
       raw: progress.speed,
       readable: `${readableFileSize(progress.speed)}/sec`,
     },
+  };
+};
+
+export const useRemoveFile = (inputRef: RefObject<HTMLInputElement>) => {
+  return async (key: string) => {
+    if (!inputRef.current) return;
+
+    const dt = new DataTransfer();
+    const files = inputRef.current.files || new FileList();
+
+    for (const file of files) {
+      if ((await generateFilename(file)) !== key) {
+        dt.items.add(file);
+      }
+    }
+
+    inputRef.current.files = dt.files;
   };
 };

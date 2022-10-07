@@ -1,28 +1,83 @@
+import { useState, useRef } from "react";
 import { Form } from "@remix-run/react";
-
 import UploaderProvider, {
   useUploader,
   useFileUpload,
+  useRemoveFile,
 } from "~/context/uploader";
 
-import { AddFileIcon, UploadIcon } from "~/components/shared/Icons";
+import {
+  AddFileIcon,
+  UploadIcon,
+  RemoveIcon,
+  ConfirmIcon,
+  CancelIcon,
+} from "~/components/shared/Icons";
 import Button from "~/components/shared/Button";
 
-interface UploadListProps {
-  upload: Upload;
+interface ConfirmRemoveProps {
+  onConfirm: () => void;
+  onCancel: () => void;
 }
+
+const ConfirmRemove = (props: ConfirmRemoveProps) => {
+  return (
+    <div className="group border border-rose-400 hover:border-rose-700 bg-white absolute w-full h-full rounded-md flex flex-col justify-center items-center space-y-2">
+      <span className="text-rose-400 group-hover:text-rose-400">
+        Are you sure you want to remove this file?
+      </span>
+      <div className="flex space-x-2 text-rose-400 ">
+        <button
+          className="hover:text-rose-700"
+          type="button"
+          onClick={props.onConfirm}
+        >
+          <ConfirmIcon />
+        </button>
+        <button
+          className="hover:text-rose-700"
+          type="button"
+          onClick={props.onCancel}
+        >
+          <CancelIcon />
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const Upload = (props: UploadListProps) => {
   const { percentage, ready, speed } = useFileUpload(props.upload);
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   return (
     <li
-      className={`px-4 py-2 border rounded-md ${
+      className={`border rounded-md relative ${
         props.upload.uploading ? "border-gray-400" : "border-gray-200"
       }`}
     >
-      <div className="text-gray-800">{props.upload.file.name}</div>
-      <div className="flex justify-between items-end">
+      {showConfirmation && (
+        <ConfirmRemove
+          onConfirm={() => {
+            props.upload.remove();
+            setShowConfirmation(false);
+          }}
+          onCancel={() => setShowConfirmation(false)}
+        />
+      )}
+      <div className="pl-2 pt-2 pr-2 flex justify-between space-x-4">
+        <span className="text-gray-800 text-sm">{props.upload.file.name}</span>
+        <span className="pr-1 pt-1">
+          <button
+            type="button"
+            className="text-gray-400 hover:text-rose-700"
+            onClick={() => setShowConfirmation(true)}
+          >
+            <RemoveIcon />
+          </button>
+        </span>
+      </div>
+      <div className="pl-2 pb-2 pr-2 flex justify-between items-end">
         {speed.calculating ? (
           <span className="text-sm text-gray-400">
             Calculating upload speed
@@ -44,6 +99,10 @@ const Upload = (props: UploadListProps) => {
   );
 };
 
+interface UploadListProps {
+  upload: Upload;
+}
+
 const UploadList = () => {
   const { uploads } = useUploader();
 
@@ -61,7 +120,10 @@ const UploadList = () => {
 };
 
 const FileUpload = () => {
+  const inputRef = useRef<HTMLInputElement>(null);
   const { add, start, uploads } = useUploader();
+
+  const remove = useRemoveFile(inputRef);
 
   return (
     <Form
@@ -85,12 +147,13 @@ const FileUpload = () => {
             <span>Add Files</span>
           </div>
           <input
+            ref={inputRef}
             type="file"
             name="uploads"
             multiple
             onChange={(event) => {
               if (event.target.files && event.target.files.length > 0) {
-                add(Array.from(event.target.files));
+                add(Array.from(event.target.files), remove);
               }
             }}
             className="hidden"
@@ -101,10 +164,14 @@ const FileUpload = () => {
   );
 };
 
-export default function Uploader() {
+interface UploaderProps {
+  refresh: () => void;
+}
+
+export default function Uploader(props: UploaderProps) {
   return (
-    <section className="w-96 shadow-md fixed right-2 bottom-2 border border-gray-200 bg-gray-50 rounded-md hover:border-gray-300">
-      <UploaderProvider>
+    <section className="w-128 shadow-md fixed right-2 bottom-2 border border-gray-200 bg-gray-50 rounded-md hover:border-gray-300">
+      <UploaderProvider refresh={props.refresh}>
         <FileUpload />
       </UploaderProvider>
     </section>

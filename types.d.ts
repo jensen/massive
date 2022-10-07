@@ -22,6 +22,7 @@ interface Upload {
   uploading: boolean;
   error: boolean;
   file: File;
+  remove: () => void;
 }
 
 interface ChunkProgress {
