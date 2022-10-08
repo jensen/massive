@@ -3,11 +3,13 @@ import {
   Links,
   LiveReload,
   Meta,
-  Outlet,
   Scripts,
   ScrollRestoration,
 } from "@remix-run/react";
+
+import Page from "~/components/layout/Page";
 import Uploader from "~/components/Uploader";
+
 import { useRefetchData } from "~/api/data";
 
 import styles from "~/styles/app.css";
@@ -33,7 +35,7 @@ export default function App() {
       </head>
       <body>
         <Uploader refresh={refresh} />
-        <Outlet />
+        <Page />
         <ScrollRestoration />
         <Scripts />
         <LiveReload />

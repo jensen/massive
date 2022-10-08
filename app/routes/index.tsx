@@ -22,8 +22,8 @@ export default function Index() {
   }>();
 
   return (
-    <div>
-      <ul className="p-4">
+    <section className="flex flex-col space-y-4">
+      <ul className="">
         {objects.map((object) => {
           return (
             <li key={object.id} className="text-gray-400">
@@ -32,12 +32,12 @@ export default function Index() {
           );
         })}
       </ul>
-      <div className="px-4 text-xl font-bold text-gray-500">
+      <div className="text-xl font-bold text-gray-500">
         Total Size:{" "}
         {readableFileSize(
           objects.reduce((sum, object) => sum + object.size, 0)
         )}
       </div>
-    </div>
+    </section>
   );
 }

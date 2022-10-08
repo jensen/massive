@@ -3,12 +3,21 @@
 @tailwind utilities;
 
 @layer base {
+  html,
+  body {
+    @apply h-full;
+  }
+
   body {
     @apply bg-slate-100;
   }
 }
 
 @layer components {
+  .link {
+    @apply text-slate-400 hover:text-slate-900;
+  }
+
   .button {
     @apply flex space-x-4 w-full px-4 py-2;
     @apply border border-gray-300 border-dashed rounded-md;

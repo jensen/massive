@@ -6,6 +6,7 @@ import {
   putBucketCors,
   deleteBucketCors,
 } from "~/services/storage.server";
+import Button from "~/components/shared/Button";
 
 export const loader = async ({ request }: LoaderArgs) => {
   try {
@@ -13,11 +14,13 @@ export const loader = async ({ request }: LoaderArgs) => {
 
     return json({
       cors,
+      error: null,
     });
   } catch (error) {
     return json(
       {
         error: "CORS policy not found",
+        cors: null,
       },
       {
         status: 404,
@@ -40,24 +43,44 @@ export const action = async ({ request }: ActionArgs) => {
   return redirect("/cors");
 };
 
-export default function Index() {
-  const data = useLoaderData();
+function Empty() {
+  return (
+    <Form className="w-96 space-y-4" method="post">
+      <textarea
+        className="font-mono text-xs w-full"
+        name="policy"
+        rows={20}
+      ></textarea>
+      <Button>Save</Button>
+    </Form>
+  );
+}
 
-  if (data.error) {
-    return (
-      <Form method="post">
-        <textarea name="policy" rows={20}></textarea>
-        <button>Submit</button>
-      </Form>
-    );
-  }
+interface ExistingProps {
+  value: string;
+}
+
+function Existing(props: ExistingProps) {
+  return (
+    <Form className="w-96 space-y-4" action="?delete" method="post">
+      <pre className="text-xs">{props.value}</pre>
+      <Button>Delete</Button>
+    </Form>
+  );
+}
+
+export default function Index() {
+  const { cors, error } = useLoaderData<Awaited<typeof loader>>();
 
   return (
-    <>
-      <pre>{JSON.stringify(data.cors.CORSRules, null, 2)}</pre>
-      <Form action="?delete" method="post">
-        <button>Delete</button>
-      </Form>
-    </>
+    <section className="flex flex-col items-center">
+      {error ? (
+        <Empty />
+      ) : (
+        <Existing
+          value={JSON.stringify({ CORSRules: cors?.CORSRules }, null, 2)}
+        />
+      )}
+    </section>
   );
 }
