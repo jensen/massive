@@ -112,9 +112,9 @@ export default function Uploads() {
             {uploads.map(
               (upload) =>
                 upload && (
-                  <li key={upload.UploadId} className="flex flex-col">
+                  <li key={upload.UploadId} className="flex flex-col space-y-1">
                     <span className="text-sm">{upload.Key}</span>
-                    <div className="flex justify-between space-y-2">
+                    <div className="flex justify-between">
                       <span className="text-xs text-gray-400">
                         {`Created ${format(upload.Initiated)} ago`}
                       </span>
