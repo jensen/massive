@@ -27,7 +27,7 @@ export const selectObjects = () => {
 export const createObject = (data: {
   id: string;
   name: string;
-  size: number;
+  size: bigint;
   type: string;
 }) => {
   return createClient().file.create({

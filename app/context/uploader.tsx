@@ -19,7 +19,7 @@ import { addObject } from "~/api/storage";
 
 import type { RefObject, PropsWithChildren } from "react";
 
-const CONCURRENT_CHUNKS_PER_FILE = 5;
+const CONCURRENT_CHUNKS_PER_FILE = 4;
 
 type ReducerAction =
   | { type: "START_CHUNKS"; uploading: FileChunk[] }
@@ -332,16 +332,18 @@ export const useFileUpload = (upload: Upload) => {
       );
 
       if (first !== -1) {
-        upload(
-          chunks.current.slice(
-            first,
-            first +
-              Math.min(
-                CONCURRENT_CHUNKS_PER_FILE,
-                chunks.current.length + 1 - first
-              )
-          )
-        );
+        if (progress.uploading.length === 0) {
+          upload(
+            chunks.current.slice(
+              first,
+              first +
+                Math.min(
+                  CONCURRENT_CHUNKS_PER_FILE,
+                  chunks.current.length + 1 - first
+                )
+            )
+          );
+        }
       } else {
         complete(
           key,
@@ -362,7 +364,7 @@ export const useFileUpload = (upload: Upload) => {
     handleProgress,
     complete,
     incomplete,
-    progress.bytesUploaded,
+    progress,
   ]);
 
   return {

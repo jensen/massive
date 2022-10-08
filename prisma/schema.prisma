@@ -10,7 +10,7 @@ datasource db {
 model File {
   id String @id
   name String
-  size Int
+  size BigInt
   type String
   created_at DateTime @default(now())
   modified_at DateTime @updatedAt @default(now())

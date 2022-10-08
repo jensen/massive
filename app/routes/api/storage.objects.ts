@@ -17,9 +17,9 @@ export const action = async ({ request }: ActionArgs) => {
   const id = body.id as string;
   const name = body.name as string;
   const type = (body.type as string) || "application/octet-stream";
-  const size = Number(body.size);
+  const size = BigInt(body.size as string);
 
   const object = await createObject({ id, name, type, size });
 
-  return json({ object });
+  return json({ object: { ...object, size: Number(object.size) } });
 };
