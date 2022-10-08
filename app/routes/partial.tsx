@@ -25,6 +25,14 @@ export const loader = async () => {
       )
     : [];
 
+  uploads.sort((a, b) => {
+    if (a?.Initiated && b?.Initiated) {
+      return b.Initiated.getTime() - a.Initiated.getTime();
+    }
+
+    return 0;
+  });
+
   return json({
     uploads,
   });
