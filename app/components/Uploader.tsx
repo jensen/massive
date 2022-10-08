@@ -46,7 +46,11 @@ const ConfirmRemove = (props: ConfirmRemoveProps) => {
   );
 };
 
-const Upload = (props: UploadListProps) => {
+interface UploadProps {
+  upload: Upload;
+}
+
+const Upload = (props: UploadProps) => {
   const { percentage, ready, speed } = useFileUpload(props.upload);
   const [showConfirmation, setShowConfirmation] = useState(false);
 
@@ -98,10 +102,6 @@ const Upload = (props: UploadListProps) => {
     </li>
   );
 };
-
-interface UploadListProps {
-  upload: Upload;
-}
 
 const UploadList = () => {
   const { uploads } = useUploader();
