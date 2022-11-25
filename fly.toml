@@ -1,3 +1,5 @@
+# fly.toml file generated for massive on 2022-10-08T14:32:03-07:00
+
 app = "massive"
 kill_signal = "SIGINT"
 kill_timeout = 5
@@ -9,10 +11,15 @@ processes = []
 [experimental]
   allowed_public_ports = []
   auto_rollback = true
+  cmd = []
+  entrypoint = []
+  exec = []
 
-[mounts]
-  source = "data"
+[[mounts]]
   destination = "/data"
+  encrypted = false
+  processes = []
+  source = "data"
 
 [[services]]
   http_checks = []

@@ -6,6 +6,7 @@ import {
   abortMultipartUpload,
 } from "~/services/storage.server";
 import Button from "~/components/shared/Button";
+import { format } from "~/utils/date";
 
 export const loader = async () => {
   const { Uploads } = await listMultipartUploads();
@@ -64,49 +65,6 @@ function Empty() {
   );
 }
 
-function format(date?: string) {
-  if (date === undefined) {
-    throw new Error("Must provide date");
-  }
-
-  const seconds = Math.floor(
-    (new Date().getTime() - new Date(date).getTime()) / 1000
-  );
-
-  const intervals = [
-    {
-      label: "year",
-      seconds: 365 * 24 * 60 * 60,
-    },
-    {
-      label: "month",
-      seconds: 30 * 24 * 60 * 60,
-    },
-    {
-      label: "day",
-      seconds: 24 * 60 * 60,
-    },
-    {
-      label: "hour",
-      seconds: 60 * 60,
-    },
-    {
-      label: "minute",
-      seconds: 60,
-    },
-  ];
-
-  for (const interval of intervals) {
-    const time = Math.floor(seconds / interval.seconds);
-
-    if (time >= 1) {
-      return `${time} ${interval.label}${time > 1 ? "s" : ""}`;
-    }
-  }
-
-  return `${seconds} seconds`;
-}
-
 export default function Uploads() {
   const { uploads } = useLoaderData<Awaited<typeof loader>>();
 
@@ -128,7 +86,7 @@ export default function Uploads() {
                       </span>
                       {upload.Parts && (
                         <span className="text-xs text-gray-400">
-                          {upload.Parts.length} parts completed
+                          {`${upload.Parts.length} parts completed`}
                         </span>
                       )}
                     </div>
