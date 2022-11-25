@@ -1,4 +1,4 @@
-We benefit in a few ways from using a multipart upload strategy.# Massive Uploader
+# Massive Uploader
 
 This project provides an example to those who want to build multipart, resumable uploads using S3 or a compatible API.
 
